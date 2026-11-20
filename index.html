@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DroidVault — Android App Hub</title>
+  <meta name="description" content="Discover curated Android apps, watch app preview videos, and download verified APK packages directly." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['DM Sans', 'system-ui', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #FAFAFA;
+      color: #09090B;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, h4 {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-zinc-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <button id="brand-btn" type="button" class="text-lg font-extrabold tracking-tight text-zinc-950 hover:text-emerald-700 transition-colors whitespace-nowrap shrink-0">
+        DroidVault
+      </button>
+
+      <nav aria-label="Primary navigation" class="hidden md:flex items-center gap-7 text-sm font-medium text-zinc-600">
+        <button data-nav="catalog" type="button" class="nav-link py-1 border-b-2 border-transparent hover:text-zinc-950 transition-colors whitespace-nowrap">Catalog</button>
+        <button data-nav="downloads" type="button" class="nav-link py-1 border-b-2 border-transparent hover:text-zinc-950 transition-colors whitespace-nowrap">My Downloads</button>
+      </nav>
+
+      <div class="flex items-center gap-2.5 shrink-0">
+        <!-- Admin button appears ONLY after unlocking with authorized credentials -->
+        <button id="admin-nav-btn" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-950 text-white hover:bg-zinc-800 transition-colors whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Admin
+        </button>
+
+        <button id="signin-open-btn" type="button" class="px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors whitespace-nowrap">
+          Sign In
+        </button>
+
+        <div id="account-wrap" class="hidden relative">
+          <button id="account-menu-btn" type="button" class="px-3.5 py-2 text-xs sm:text-sm font-semibold text-zinc-900 bg-zinc-100 hover:bg-zinc-200/80 rounded-lg transition-colors whitespace-nowrap max-w-[150px] truncate">
+            Account
+          </button>
+          <div id="account-dropdown" class="hidden absolute right-0 mt-2 w-60 bg-white border border-zinc-200 rounded-xl shadow-lg p-3 z-50">
+            <div class="pb-2.5 mb-2.5 border-b border-zinc-100">
+              <p id="account-name" class="text-sm font-semibold text-zinc-950 truncate"></p>
+              <p id="account-email" class="text-xs text-zinc-500 truncate mt-0.5"></p>
+            </div>
+            <button id="signout-btn" type="button" class="w-full text-left px-3 py-2 text-xs font-medium text-zinc-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        <button id="mobile-menu-btn" type="button" aria-label="Toggle menu" class="md:hidden p-2 text-zinc-700 hover:text-zinc-950 rounded-lg hover:bg-zinc-100">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="mobile-drawer" class="hidden md:hidden border-t border-zinc-200 bg-white px-4 py-3 space-y-1">
+      <button data-nav="catalog" type="button" class="w-full text-left px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 rounded-lg">Catalog</button>
+      <button data-nav="downloads" type="button" class="w-full text-left px-3 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 rounded-lg">My Downloads</button>
+    </div>
+  </header>
+
+  <!-- Toast Notification -->
+  <div id="toast" role="status" class="hidden fixed bottom-5 right-5 z-50 bg-zinc-950 text-white text-xs font-medium px-4 py-3 rounded-lg shadow-lg border border-zinc-800"></div>
+
+  <!-- Email & Password Auth Modal (No Google login, No email verification) -->
+  <div id="auth-modal" role="dialog" aria-modal="true" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/50 backdrop-blur-sm">
+    <div class="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-xl p-6 sm:p-7 space-y-5">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 id="auth-title" class="text-xl font-bold text-zinc-950">Sign in to DroidVault</h2>
+          <p id="auth-subtitle" class="text-xs text-zinc-500 mt-1">Access your saved downloads and member account.</p>
+        </div>
+        <button id="auth-close-btn" type="button" aria-label="Close dialog" class="p-1.5 text-zinc-400 hover:text-zinc-900 rounded-lg hover:bg-zinc-100">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-1 p-1 bg-zinc-100 rounded-lg">
+        <button id="mode-signin-btn" type="button" class="py-1.5 text-xs font-semibold rounded-md bg-white text-zinc-950 shadow-sm">Sign In</button>
+        <button id="mode-signup-btn" type="button" class="py-1.5 text-xs font-semibold rounded-md text-zinc-600 hover:text-zinc-950">Create Account</button>
+      </div>
+
+      <div id="auth-error-box" class="hidden px-3.5 py-2.5 text-xs text-red-800 bg-red-50 border border-red-200 rounded-lg leading-relaxed"></div>
+
+      <form id="auth-form" class="space-y-4">
+        <div id="auth-name-field" class="hidden">
+          <label for="auth-name-input" class="block text-xs font-medium text-zinc-700 mb-1">Full Name</label>
+          <input id="auth-name-input" type="text" maxlength="100" placeholder="Alex Perera" class="w-full px-3.5 py-2.5 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:border-emerald-600" />
+        </div>
+
+        <div>
+          <label for="auth-email-input" class="block text-xs font-medium text-zinc-700 mb-1">Email Address</label>
+          <input id="auth-email-input" type="email" required autocomplete="email" placeholder="you@example.com" class="w-full px-3.5 py-2.5 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:border-emerald-600" />
+        </div>
+
+        <div>
+          <label for="auth-password-input" class="block text-xs font-medium text-zinc-700 mb-1">Password</label>
+          <input id="auth-password-input" type="password" required minlength="6" autocomplete="current-password" placeholder="Enter your password" class="w-full px-3.5 py-2.5 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:border-emerald-600" />
+        </div>
+
+        <button id="auth-submit-btn" type="submit" class="w-full py-2.5 px-4 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 rounded-lg transition-colors">
+          Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Dynamic Content -->
+  <main id="app-root" class="flex-1"></main>
+
+  <!-- Clean Public Footer -->
+  <footer class="bg-white border-t border-zinc-200 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
+      <p>&copy; <span id="footer-year"></span> DroidVault — Android App Hub</p>
+      <div class="flex items-center gap-6">
+        <button data-nav="catalog" type="button" class="hover:text-zinc-950 transition-colors">Catalog</button>
+        <button data-nav="downloads" type="button" class="hover:text-zinc-950 transition-colors">My Downloads</button>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      updateProfile,
+      signOut,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+    import {
+      getFirestore,
+      collection,
+      doc,
+      getDoc,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot,
+      query,
+      where,
+      increment,
+      serverTimestamp,
+      writeBatch,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+    // =========================================================================
+    // Firebase Configuration
+    // =========================================================================
+    const FIREBASE_CONFIG = {
+      projectId: 'gen-lang-client-0390672167',
+      appId: '1:462083263085:web:18444c7877c95028f28d64',
+      apiKey: 'AIzaSyC2N1PN5ewRsMwJtYs52oG3UEBYaLuU44w',
+      authDomain: 'gen-lang-client-0390672167.firebaseapp.com',
+      storageBucket: 'gen-lang-client-0390672167.firebasestorage.app',
+      messagingSenderId: '462083263085',
+    };
+    const FIRESTORE_DB_ID = 'ai-studio-0fd48c53-680d-4169-9b42-5a54f66ede2a';
+
+    const PRIMARY_ADMIN_EMAIL = 'dilanaviator13@gmail.com';
+    const BOOTSTRAPPED_ADMIN_EMAILS = ['dilanaviator13@gmail.com', 'dilanytwon@gmail.com'];
+    const ADMIN_CREDENTIAL_DIGEST = 'f9f0fcedd12eda6645d14b448e84155409bb66cd747b0d7cf6f698cd11731753';
+    const ADMIN_UNLOCK_KEY = 'dv_portal_gate';
+    const CATEGORIES = ['All', 'Utilities', 'Productivity', 'Media & Audio', 'Developer Tools', 'Games', 'Education'];
+
+    const firebaseApp = initializeApp(FIREBASE_CONFIG);
+    const db = getFirestore(firebaseApp, FIRESTORE_DB_ID);
+    const auth = getAuth(firebaseApp);
+
+    const STARTER_SAMPLE_APPS = [
+      {
+        id: 'notesync-pro',
+        name: 'NoteSync Pro',
+        tagline: 'Offline-first markdown notebook with instant local backup and clean split-screen editing.',
+        description: 'NoteSync Pro is built for fast capture without cloud lock-in. Organize study notes, daily checklists, and code snippets with instant search.',
+        whatsNew: '',
+        version: '2.4.0',
+        packageId: 'com.droidvault.notesync',
+        category: 'Productivity',
+        minAndroid: 'Android 10+',
+        developer: 'DroidVault Labs',
+        iconUrl: '',
+        apkUrl: 'https://github.com/android/architecture-samples/releases',
+        apkFileName: 'NoteSyncPro-v2.4.0.apk',
+        apkSizeBytes: 18450000,
+        apkSha256: '',
+        screenshots: [],
+        videoUrl: '',
+        videoFileName: '',
+        downloads: 1284,
+        featured: true,
+        published: true,
+        storageProvider: 'google-drive',
+        ownerUid: 'sample-preview',
+        isPreviewSample: true,
+      },
+      {
+        id: 'soundwave-eq',
+        name: 'SoundWave EQ',
+        tagline: '12-band parametric audio equalizer and lossless FLAC player for wired and Bluetooth headsets.',
+        description: 'Fine-tune every frequency band with studio-grade precision, AutoEQ headphone profiles, and gapless local playback.',
+        whatsNew: '',
+        version: '3.1.2',
+        packageId: 'com.droidvault.soundwave',
+        category: 'Media & Audio',
+        minAndroid: 'Android 11+',
+        developer: 'Acoustics Lab',
+        iconUrl: '',
+        apkUrl: 'https://github.com/android/architecture-samples/releases',
+        apkFileName: 'SoundWaveEQ-v3.1.2.apk',
+        apkSizeBytes: 24900000,
+        apkSha256: '',
+        screenshots: [],
+        videoUrl: '',
+        videoFileName: '',
+        downloads: 892,
+        featured: false,
+        published: true,
+        storageProvider: 'google-drive',
+        ownerUid: 'sample-preview',
+        isPreviewSample: true,
+      },
+    ];
+
+    // =========================================================================
+    // State
+    // =========================================================================
+    const state = {
+      user: null,
+      isAdminUnlocked: (() => {
+        try { return sessionStorage.getItem(ADMIN_UNLOCK_KEY) === '1'; } catch { return false; }
+      })(),
+      page: 'catalog',
+      selectedAppId: null,
+      firestoreApps: [],
+      loadingApps: true,
+      selectedCategory: 'All',
+      searchQuery: '',
+      downloadRecords: [],
+      authMode: 'signin',
+      editingId: null,
+      showOptional: false,
+      confirmDeleteId: null,
+      adminFeedback: null,
+      form: createEmptyForm(),
+    };
+
+    let unsubApps = null;
+    let unsubDownloads = null;
+
+    function createEmptyForm() {
+      return {
+        name: '',
+        apkUrl: '',
+        videoUrl: '',
+        iconUrl: '',
+        tagline: '',
+        description: '',
+        version: '1.0.0',
+        category: 'Utilities',
+        apkSizeBytes: 0,
+        published: true,
+        featured: false,
+      };
+    }
+
+    // =========================================================================
+    // Helpers (Google Drive auto-conversion + formatting)
+    // =========================================================================
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function safeHttps(url) {
+      const s = String(url || '').trim();
+      return /^https:\/\//i.test(s) ? s : '';
+    }
+
+    function formatBytes(bytes) {
+      const n = Number(bytes) || 0;
+      if (n <= 0) return 'Direct APK';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const idx = Math.min(Math.floor(Math.log(n) / Math.log(1024)), units.length - 1);
+      const val = n / Math.pow(1024, idx);
+      return `${val >= 100 ? val.toFixed(0) : val.toFixed(1)} ${units[idx]}`;
+    }
+
+    function slugifyAppId(input) {
+      const clean = String(input || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 64);
+      return clean || `app-${Date.now()}`;
+    }
+
+    function extractDriveId(url) {
+      const s = String(url || '').trim();
+      const m =
+        s.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i) ||
+        s.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/i) ||
+        s.match(/drive\.google\.com\/uc\?.*?id=([a-zA-Z0-9_-]+)/i);
+      return m ? m[1] : null;
+    }
+
+    function normalizeDriveUrl(raw, kind) {
+      const trimmed = String(raw || '').trim();
+      if (!trimmed) return { url: '', isDrive: false };
+      const fid = extractDriveId(trimmed);
+      if (fid) {
+        if (kind === 'image') return { url: `https://lh3.googleusercontent.com/d/${fid}`, isDrive: true };
+        if (kind === 'video') return { url: `https://drive.google.com/file/d/${fid}/preview`, isDrive: true };
+        return { url: `https://drive.google.com/uc?export=download&id=${fid}`, isDrive: true };
+      }
+      return { url: trimmed, isDrive: false };
+    }
+
+    function getVideoEmbedInfo(rawUrl) {
+      const trimmed = safeHttps(rawUrl);
+      if (!trimmed) return { type: 'none', src: '' };
+      const yt = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,})/i);
+      if (yt) return { type: 'youtube', src: `https://www.youtube-nocookie.com/embed/${yt[1]}` };
+      const fid = extractDriveId(trimmed);
+      if (fid) return { type: 'drive', src: `https://drive.google.com/file/d/${fid}/preview` };
+      return { type: 'direct', src: trimmed };
+    }
+
+    async function sha256Hex(value) {
+      if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const bytes = new TextEncoder().encode(value);
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      }
+      return '';
+    }
+
+    async function verifyAdminCredentials(email, password) {
+      const normalized = `${String(email || '').trim().toLowerCase()}::${password}`;
+      try {
+        const hash = await sha256Hex(normalized);
+        return hash === ADMIN_CREDENTIAL_DIGEST;
+      } catch {
+        return false;
+      }
+    }
+
+    function isAuthorizedAdminUser() {
+      return Boolean(
+        state.user &&
+        state.user.email &&
+        BOOTSTRAPPED_ADMIN_EMAILS.includes(state.user.email.toLowerCase())
+      );
+    }
+
+    function persistAdminUnlock(unlocked) {
+      state.isAdminUnlocked = unlocked;
+      try {
+        if (unlocked) sessionStorage.setItem(ADMIN_UNLOCK_KEY, '1');
+        else sessionStorage.removeItem(ADMIN_UNLOCK_KEY);
+      } catch {}
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.add('hidden'), 3500);
+    }
+
+    function renderAppAvatar(app, sizeClass = 'w-14 h-14 rounded-xl') {
+      const icon = safeHttps(app.iconUrl);
+      if (icon) {
+        return `<img src="${esc(icon)}" alt="${esc(app.name)} icon" class="${sizeClass} object-cover border border-zinc-200 shrink-0 bg-zinc-100" loading="lazy" />`;
+      }
+      const initials = esc((app.name || 'DV').slice(0, 2).toUpperCase());
+      return `<div class="${sizeClass} bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-bold text-sm shrink-0">${initials}</div>`;
+    }
+
+    function getPublicApps() {
+      const live = state.firestoreApps.filter((a) => a.published);
+      if (live.length > 0) return live;
+      if (state.firestoreApps.length === 0) return STARTER_SAMPLE_APPS;
+      return [];
+    }
+
+    // =========================================================================
+    // Firebase Sync
+    // =========================================================================
+    async function syncUserProfileDoc(firebaseUser) {
+      if (!firebaseUser || !firebaseUser.email) return;
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      try {
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          const safeName = (firebaseUser.displayName || firebaseUser.email.split('@')[0] || 'Member').slice(0, 100);
+          await setDoc(userRef, {
+            uid: firebaseUser.uid,
+            displayName: safeName,
+            email: firebaseUser.email.slice(0, 200),
+            role: 'user',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        }
+      } catch (err) {
+        console.error('Member profile sync skipped:', err);
+      }
+    }
+
+    function subscribeApps() {
+      if (unsubApps) unsubApps();
+      state.loadingApps = true;
+      const appsRef = collection(db, 'apps');
+      const appsQuery =
+        state.isAdminUnlocked && isAuthorizedAdminUser()
+          ? query(appsRef)
+          : query(appsRef, where('published', '==', true));
+
+      unsubApps = onSnapshot(
+        appsQuery,
+        (snapshot) => {
+          const docs = snapshot.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: String(data.id || d.id),
+              name: String(data.name || ''),
+              tagline: String(data.tagline || ''),
+              description: String(data.description || ''),
+              whatsNew: String(data.whatsNew || ''),
+              version: String(data.version || '1.0.0'),
+              packageId: String(data.packageId || ''),
+              category: String(data.category || 'Utilities'),
+              minAndroid: String(data.minAndroid || 'Android 8.0+'),
+              developer: String(data.developer || 'DroidVault'),
+              iconUrl: String(data.iconUrl || ''),
+              apkUrl: String(data.apkUrl || ''),
+              apkFileName: String(data.apkFileName || 'app.apk'),
+              apkSizeBytes: Number(data.apkSizeBytes || 0),
+              apkSha256: String(data.apkSha256 || ''),
+              screenshots: Array.isArray(data.screenshots) ? data.screenshots.map(String).slice(0, 4) : [],
+              videoUrl: String(data.videoUrl || ''),
+              videoFileName: String(data.videoFileName || ''),
+              downloads: Number(data.downloads || 0),
+              featured: Boolean(data.featured),
+              published: Boolean(data.published),
+              storageProvider: String(data.storageProvider || 'google-drive'),
+              ownerUid: String(data.ownerUid || ''),
+            };
+          });
+          docs.sort((a, b) => (a.featured !== b.featured ? (a.featured ? -1 : 1) : b.downloads - a.downloads));
+          state.firestoreApps = docs;
+          state.loadingApps = false;
+          render();
+        },
+        (err) => {
+          console.error('Firestore error:', err);
+          state.loadingApps = false;
+          render();
+        }
+      );
+    }
+
+    function subscribeDownloads() {
+      if (unsubDownloads) unsubDownloads();
+      if (!state.user) {
+        state.downloadRecords = [];
+        return;
+      }
+      const q = query(
+        collection(db, 'users', state.user.uid, 'downloads'),
+        where('userId', '==', state.user.uid)
+      );
+      unsubDownloads = onSnapshot(q, (snap) => {
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          appId: String(d.data().appId || ''),
+          appName: String(d.data().appName || ''),
+          version: String(d.data().version || ''),
+          downloadedAt: d.data().downloadedAt || null,
+        }));
+        list.sort((a, b) => {
+          const aMs = a.downloadedAt?.toMillis ? a.downloadedAt.toMillis() : 0;
+          const bMs = b.downloadedAt?.toMillis ? b.downloadedAt.toMillis() : 0;
+          return bMs - aMs;
+        });
+        state.downloadRecords = list;
+        if (state.page === 'downloads') render();
+      });
+    }
+
+    // =========================================================================
+    // Routing & Auth
+    // =========================================================================
+    function parseHash() {
+      const raw = window.location.hash.replace(/^#/, '');
+      if (raw.startsWith('app/')) return { page: 'detail', appId: decodeURIComponent(raw.slice(4)) };
+      if (raw === 'downloads') return { page: 'downloads', appId: null };
+      if (raw === 'admin' && state.isAdminUnlocked) return { page: 'admin', appId: null };
+      return { page: 'catalog', appId: null };
+    }
+
+    function navigate(page, appId = null) {
+      if (page === 'admin' && !state.isAdminUnlocked) page = 'catalog';
+      state.page = page;
+      state.selectedAppId = appId;
+      window.location.hash = page === 'detail' && appId ? `app/${encodeURIComponent(appId)}` : page;
+      document.getElementById('mobile-drawer').classList.add('hidden');
+      document.getElementById('account-dropdown').classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      render();
+    }
+
+    function updateHeader() {
+      const adminBtn = document.getElementById('admin-nav-btn');
+      const signinBtn = document.getElementById('signin-open-btn');
+      const accountWrap = document.getElementById('account-wrap');
+
+      if (state.isAdminUnlocked) {
+        adminBtn.classList.remove('hidden');
+        adminBtn.className = state.page === 'admin'
+          ? 'inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-emerald-600 text-white transition-colors whitespace-nowrap'
+          : 'inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-950 text-white hover:bg-zinc-800 transition-colors whitespace-nowrap';
+      } else {
+        adminBtn.classList.add('hidden');
+      }
+
+      if (state.user || state.isAdminUnlocked) {
+        const displayName = state.user?.displayName || state.user?.email?.split('@')[0] || 'Account';
+        signinBtn.classList.add('hidden');
+        accountWrap.classList.remove('hidden');
+        document.getElementById('account-menu-btn').textContent = displayName;
+        document.getElementById('account-name').textContent = displayName;
+        document.getElementById('account-email').textContent = state.user?.email || '';
+      } else {
+        signinBtn.classList.remove('hidden');
+        accountWrap.classList.add('hidden');
+      }
+
+      document.querySelectorAll('.nav-link').forEach((btn) => {
+        const target = btn.getAttribute('data-nav');
+        const active = state.page === target || (state.page === 'detail' && target === 'catalog');
+        btn.className = active
+          ? 'nav-link py-1 border-b-2 border-emerald-600 text-zinc-950 font-semibold transition-colors whitespace-nowrap'
+          : 'nav-link py-1 border-b-2 border-transparent hover:text-zinc-950 hover:border-zinc-300 transition-colors whitespace-nowrap';
+      });
+    }
+
+    async function handleDownloadApk(app) {
+      const apkHref = safeHttps(normalizeDriveUrl(app.apkUrl, 'apk').url);
+      if (!apkHref) {
+        showToast('Invalid APK download link.');
+        return;
+      }
+      const link = document.createElement('a');
+      link.href = apkHref;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.download = app.apkFileName || 'app.apk';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if (!app.isPreviewSample && state.user) {
+        try {
+          await updateDoc(doc(db, 'apps', app.id), { downloads: increment(1) });
+          const recId = `${app.id}-${Date.now()}`.slice(0, 128);
+          await setDoc(doc(db, 'users', state.user.uid, 'downloads', recId), {
+            userId: state.user.uid,
+            appId: app.id,
+            appName: app.name.slice(0, 120),
+            version: app.version.slice(0, 40),
+            downloadedAt: serverTimestamp(),
+          });
+        } catch {}
+      }
+      showToast(`Starting download for ${app.name}`);
+    }
+
+    function openAuthModal(mode = 'signin') {
+      state.authMode = mode;
+      syncAuthModalMode();
+      document.getElementById('auth-error-box').classList.add('hidden');
+      document.getElementById('auth-modal').classList.remove('hidden');
+      document.getElementById('auth-email-input').focus();
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
+      document.getElementById('auth-password-input').value = '';
+      document.getElementById('auth-error-box').classList.add('hidden');
+    }
+
+    function syncAuthModalMode() {
+      const isSignup = state.authMode === 'signup';
+      document.getElementById('auth-title').textContent = isSignup ? 'Create an account' : 'Sign in to DroidVault';
+      document.getElementById('auth-subtitle').textContent = isSignup
+        ? 'Sign up with your email and password in seconds.'
+        : 'Access your saved downloads and member account.';
+      document.getElementById('auth-name-field').classList.toggle('hidden', !isSignup);
+      document.getElementById('auth-name-input').required = isSignup;
+      document.getElementById('auth-submit-btn').textContent = isSignup ? 'Create Account' : 'Sign In';
+      document.getElementById('mode-signin-btn').className = !isSignup
+        ? 'py-1.5 text-xs font-semibold rounded-md bg-white text-zinc-950 shadow-sm'
+        : 'py-1.5 text-xs font-semibold rounded-md text-zinc-600 hover:text-zinc-950';
+      document.getElementById('mode-signup-btn').className = isSignup
+        ? 'py-1.5 text-xs font-semibold rounded-md bg-white text-zinc-950 shadow-sm'
+        : 'py-1.5 text-xs font-semibold rounded-md text-zinc-600 hover:text-zinc-950';
+    }
+
+    function friendlyAuthError(err) {
+      const code = err && err.code ? String(err.code) : '';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/invalid-login-credentials') {
+        return 'Incorrect email or password. Please try again.';
+      }
+      if (code === 'auth/user-not-found') return 'No account found with this email. Switch to Create Account to sign up.';
+      if (code === 'auth/email-already-in-use') return 'An account with this email already exists. Sign in instead.';
+      if (code === 'auth/weak-password') return 'Password must be at least 6 characters long.';
+      if (code === 'auth/invalid-email') return 'Please enter a valid email address.';
+      if (code === 'auth/operation-not-allowed' || code === 'auth/configuration-not-found') {
+        return 'Email & Password sign-in is currently unavailable.';
+      }
+      return err && err.message ? err.message : 'Unable to sign in right now.';
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const errBox = document.getElementById('auth-error-box');
+      const submitBtn = document.getElementById('auth-submit-btn');
+      errBox.classList.add('hidden');
+
+      const email = document.getElementById('auth-email-input').value.trim();
+      const password = document.getElementById('auth-password-input').value;
+      const displayName = document.getElementById('auth-name-input').value.trim();
+
+      if (!email || !password) {
+        errBox.textContent = 'Please enter both your email and password.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Please wait...';
+
+      try {
+        const matchedAdmin = await verifyAdminCredentials(email, password);
+        if (state.authMode === 'signin') {
+          try {
+            const cred = await signInWithEmailAndPassword(auth, email, password);
+            if (cred.user) await syncUserProfileDoc(cred.user);
+            persistAdminUnlock(matchedAdmin);
+            closeAuthModal();
+            if (matchedAdmin) { subscribeApps(); navigate('admin'); } else { render(); }
+            return;
+          } catch (signErr) {
+            if (matchedAdmin) {
+              try {
+                const created = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(created.user, { displayName: 'Dilan' });
+                await syncUserProfileDoc(created.user);
+              } catch {}
+              persistAdminUnlock(true);
+              closeAuthModal();
+              subscribeApps();
+              navigate('admin');
+              return;
+            }
+            errBox.textContent = friendlyAuthError(signErr);
+            errBox.classList.remove('hidden');
+          }
+        } else {
+          try {
+            const cred = await createUserWithEmailAndPassword(auth, email, password);
+            const cleanName = displayName.slice(0, 100) || email.split('@')[0];
+            if (cleanName) await updateProfile(cred.user, { displayName: cleanName });
+            await syncUserProfileDoc(cred.user);
+            persistAdminUnlock(matchedAdmin);
+            closeAuthModal();
+            if (matchedAdmin) { subscribeApps(); navigate('admin'); } else { render(); }
+            return;
+          } catch (upErr) {
+            if (matchedAdmin) {
+              try {
+                const signed = await signInWithEmailAndPassword(auth, email, password);
+                if (signed.user) await syncUserProfileDoc(signed.user);
+              } catch {}
+              persistAdminUnlock(true);
+              closeAuthModal();
+              subscribeApps();
+              navigate('admin');
+              return;
+            }
+            errBox.textContent = friendlyAuthError(upErr);
+            errBox.classList.remove('hidden');
+          }
+        }
+      } finally {
+        submitBtn.disabled = false;
+        syncAuthModalMode();
+      }
+    }
+
+    // =========================================================================
+    // Views
+    // =========================================================================
+    function renderCatalogView() {
+      const publicApps = getPublicApps();
+      const featuredApp = publicApps.find((a) => a.featured) || publicApps[0] || null;
+      const totalDownloads = publicApps.reduce((s, a) => s + (a.downloads || 0), 0);
+      const videoCount = publicApps.filter((a) => Boolean(a.videoUrl)).length;
+      const q = state.searchQuery.trim().toLowerCase();
+      const filtered = publicApps.filter((app) => {
+        if (state.selectedCategory !== 'All' && app.category !== state.selectedCategory) return false;
+        if (!q) return true;
+        return app.name.toLowerCase().includes(q) || app.tagline.toLowerCase().includes(q);
+      });
+
+      return `
+        <div>
+          <section class="bg-white border-b border-zinc-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+              <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+                <div class="lg:col-span-7 space-y-6">
+                  <div class="text-xs font-medium text-zinc-500 flex flex-wrap items-center gap-2">
+                    <span class="text-emerald-700 font-semibold">Verified Android Releases</span>
+                    <span>&middot;</span>
+                    <span>Direct APK Downloads</span>
+                    <span>&middot;</span>
+                    <span>Video Previews</span>
+                  </div>
+                  <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-950 leading-[1.08]">
+                    Clean Android apps, ready for direct download.
+                  </h1>
+                  <p class="text-base text-zinc-600 leading-relaxed max-w-xl">
+                    Explore curated Android builds with app walkthrough videos, release details, and instant direct APK downloads.
+                  </p>
+                  <div class="flex flex-wrap items-center gap-3 pt-1">
+                    <a href="#catalog-grid" class="inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors">
+                      Browse Apps &rarr;
+                    </a>
+                    ${!state.user ? `
+                      <button type="button" data-open-auth="signin" class="px-5 py-3 text-sm font-semibold text-zinc-800 bg-zinc-100 hover:bg-zinc-200/80 rounded-lg transition-colors">
+                        Sign In
+                      </button>
+                    ` : ''}
+                  </div>
+                </div>
+
+                <div class="lg:col-span-5">
+                  <div class="rounded-2xl border border-zinc-200 bg-zinc-950 text-white p-6 sm:p-8 space-y-5">
+                    <div class="flex items-center justify-between text-xs text-zinc-400 font-mono">
+                      <span>ANDROID APK VAULT</span>
+                      <span class="text-emerald-400">DIRECT DOWNLOAD</span>
+                    </div>
+                    <div class="space-y-3">
+                      ${publicApps.slice(0, 3).map((a) => `
+                        <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-zinc-900 border border-zinc-800">
+                          <div class="min-w-0">
+                            <p class="text-sm font-semibold text-white truncate">${esc(a.name)}</p>
+                            <p class="text-[11px] font-mono text-zinc-400">v${esc(a.version)} &middot; ${formatBytes(a.apkSizeBytes)}</p>
+                          </div>
+                          <span class="text-[11px] font-semibold text-emerald-400 shrink-0">${a.videoUrl ? 'Video + APK' : 'APK Ready'}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-10 pt-8 border-t border-zinc-200 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div><p class="text-xs text-zinc-500">Available Apps</p><p class="text-2xl font-bold font-mono text-zinc-950 mt-1">${publicApps.length}</p></div>
+                <div><p class="text-xs text-zinc-500">Total Downloads</p><p class="text-2xl font-bold font-mono text-zinc-950 mt-1">${totalDownloads.toLocaleString()}</p></div>
+                <div><p class="text-xs text-zinc-500">Video Walkthroughs</p><p class="text-2xl font-bold font-mono text-zinc-950 mt-1">${videoCount}</p></div>
+                <div><p class="text-xs text-zinc-500">Download Access</p><p class="text-lg sm:text-xl font-bold text-zinc-950 mt-1.5">Direct APK</p></div>
+              </div>
+            </div>
+          </section>
+
+          ${featuredApp ? `
+            <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+              <div class="bg-white border border-zinc-200 rounded-xl p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div class="flex items-start sm:items-center gap-5 min-w-0">
+                  ${renderAppAvatar(featuredApp, 'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl')}
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 text-xs text-zinc-500 mb-1">
+                      <span class="font-semibold text-emerald-700">Featured Release</span>
+                      <span>&middot;</span>
+                      <span>${esc(featuredApp.category)}</span>
+                      <span>&middot;</span>
+                      <span class="font-mono">v${esc(featuredApp.version)}</span>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-zinc-950 truncate">${esc(featuredApp.name)}</h2>
+                    <p class="text-sm text-zinc-600 mt-1 max-w-2xl line-clamp-2">${esc(featuredApp.tagline)}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                  <button type="button" data-open-app="${esc(featuredApp.id)}" class="px-4 py-2.5 text-sm font-semibold text-zinc-800 bg-zinc-100 hover:bg-zinc-200/80 rounded-lg whitespace-nowrap">View Details</button>
+                  <button type="button" data-download-app="${esc(featuredApp.id)}" class="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg whitespace-nowrap">Download APK</button>
+                </div>
+              </div>
+            </section>
+          ` : ''}
+
+          <section id="catalog-grid" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 class="text-2xl font-bold text-zinc-950">Release Catalog</h2>
+                <p class="text-sm text-zinc-500 mt-0.5">Select any app to watch its preview video and download the APK.</p>
+              </div>
+              <input id="catalog-search" type="search" value="${esc(state.searchQuery)}" placeholder="Search apps..." class="w-full md:w-72 px-4 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-emerald-600" />
+            </div>
+
+            <div class="flex items-center gap-1 p-1 bg-zinc-100 rounded-lg overflow-x-auto max-w-full">
+              ${CATEGORIES.map((cat) => `
+                <button type="button" data-cat="${esc(cat)}" class="px-3.5 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                  state.selectedCategory === cat ? 'bg-white text-zinc-950 shadow-sm' : 'text-zinc-600 hover:text-zinc-950'
+                }">${esc(cat)}</button>
+              `).join('')}
+            </div>
+
+            ${state.loadingApps ? `
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="h-48 bg-white border border-zinc-200 rounded-xl animate-pulse"></div>
+                <div class="h-48 bg-white border border-zinc-200 rounded-xl animate-pulse"></div>
+                <div class="h-48 bg-white border border-zinc-200 rounded-xl animate-pulse"></div>
+              </div>
+            ` : filtered.length === 0 ? `
+              <div class="bg-white border border-zinc-200 rounded-xl p-12 text-center space-y-3">
+                <p class="text-base font-semibold text-zinc-950">No matching apps found</p>
+                <button id="reset-filters-btn" type="button" class="px-4 py-2 text-xs font-semibold text-white bg-zinc-950 rounded-lg">Reset Filters</button>
+              </div>
+            ` : `
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${filtered.map((app) => `
+                  <article data-open-app="${esc(app.id)}" class="group bg-white border border-zinc-200 hover:border-zinc-300 rounded-xl p-6 flex flex-col justify-between transition-transform duration-150 hover:-translate-y-0.5 cursor-pointer">
+                    <div>
+                      <div class="flex items-start gap-4">
+                        ${renderAppAvatar(app, 'w-14 h-14 rounded-xl')}
+                        <div class="min-w-0 flex-1">
+                          <p class="text-xs text-zinc-500 truncate">${esc(app.category)}</p>
+                          <h3 class="text-base font-bold text-zinc-950 group-hover:text-emerald-700 transition-colors truncate mt-0.5">${esc(app.name)}</h3>
+                          <p class="text-xs font-mono text-zinc-500 mt-1">v${esc(app.version)} &middot; ${formatBytes(app.apkSizeBytes)}</p>
+                        </div>
+                      </div>
+                      <p class="text-sm text-zinc-600 leading-relaxed mt-4 line-clamp-2">${esc(app.tagline)}</p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-between gap-3">
+                      <span class="text-xs ${app.videoUrl ? 'text-emerald-700 font-medium' : 'text-zinc-500'}">
+                        ${app.videoUrl ? 'Video preview' : 'Verified APK'}
+                      </span>
+                      <button type="button" data-download-app="${esc(app.id)}" class="px-3.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors whitespace-nowrap">
+                        Download
+                      </button>
+                    </div>
+                  </article>
+                `).join('')}
+              </div>
+            `}
+          </section>
+        </div>
+      `;
+    }
+
+    function renderDetailView() {
+      const app =
+        state.firestoreApps.find((a) => a.id === state.selectedAppId) ||
+        getPublicApps().find((a) => a.id === state.selectedAppId);
+
+      if (!app) {
+        return `
+          <div class="max-w-3xl mx-auto px-4 py-16 text-center">
+            <div class="bg-white border border-zinc-200 rounded-xl p-10 space-y-4">
+              <h1 class="text-xl font-bold text-zinc-950">App not found</h1>
+              <button data-nav="catalog" type="button" class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg">Back to Catalog</button>
+            </div>
+          </div>
+        `;
+      }
+
+      const videoInfo = getVideoEmbedInfo(app.videoUrl);
+      const hasVideo = videoInfo.type !== 'none';
+
+      return `
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <button data-nav="catalog" type="button" class="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-950 mb-8">
+            &larr; Back to Catalog
+          </button>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+            <div class="lg:col-span-8 space-y-8">
+              <div class="flex flex-col sm:flex-row sm:items-center gap-5">
+                ${renderAppAvatar(app, 'w-20 h-20 rounded-2xl')}
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2 text-xs text-zinc-500 mb-1.5">
+                    <span class="font-medium text-zinc-700">${esc(app.category)}</span>
+                    <span>&middot;</span>
+                    <span class="font-mono">v${esc(app.version)}</span>
+                    ${hasVideo ? `<span>&middot;</span><span class="font-medium text-emerald-700">Video Preview Available</span>` : ''}
+                  </div>
+                  <h1 class="text-2xl sm:text-3xl font-bold text-zinc-950">${esc(app.name)}</h1>
+                  <p class="text-base text-zinc-600 mt-1.5 leading-relaxed">${esc(app.tagline)}</p>
+                </div>
+              </div>
+
+              ${hasVideo ? `
+                <section class="space-y-3">
+                  <h2 class="text-sm font-semibold text-zinc-900">App Video Preview</h2>
+                  <div class="aspect-video w-full rounded-xl overflow-hidden bg-zinc-950 border border-zinc-200">
+                    ${videoInfo.type === 'direct'
+                      ? `<video src="${esc(videoInfo.src)}" controls playsinline class="w-full h-full object-contain bg-black"></video>`
+                      : `<iframe src="${esc(videoInfo.src)}" title="${esc(app.name)} video" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`}
+                  </div>
+                </section>
+              ` : ''}
+
+              ${app.description ? `
+                <section class="pt-6 border-t border-zinc-200 space-y-3">
+                  <h2 class="text-lg font-semibold text-zinc-950">About this app</h2>
+                  <p class="text-sm sm:text-base text-zinc-600 leading-relaxed whitespace-pre-line">${esc(app.description)}</p>
+                </section>
+              ` : ''}
+            </div>
+
+            <aside class="lg:col-span-4 lg:sticky lg:top-24">
+              <div class="bg-white border border-zinc-200 rounded-xl p-6 space-y-6">
+                <div>
+                  <p class="text-xs font-medium text-zinc-500">Direct Android Package</p>
+                  <p class="text-base font-bold text-zinc-950 mt-1 break-all font-mono">${esc(app.apkFileName)}</p>
+                  <div class="flex flex-wrap items-center gap-2 text-xs text-zinc-500 mt-2 font-mono">
+                    <span>${formatBytes(app.apkSizeBytes)}</span>
+                    <span>&middot;</span>
+                    <span>${esc(app.minAndroid)}</span>
+                    <span>&middot;</span>
+                    <span>${(app.downloads || 0).toLocaleString()} downloads</span>
+                  </div>
+                </div>
+
+                <button type="button" data-download-app="${esc(app.id)}" class="w-full px-5 py-3 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors">
+                  Download APK
+                </button>
+
+                ${safeHttps(app.apkUrl) ? `
+                  <a href="${esc(safeHttps(app.apkUrl))}" target="_blank" rel="noopener noreferrer" class="block text-center text-xs font-medium text-zinc-600 hover:text-zinc-950">
+                    Open direct download link &nearr;
+                  </a>
+                ` : ''}
+
+                <div class="pt-5 border-t border-zinc-100 text-xs text-zinc-500 leading-relaxed">
+                  <p class="font-medium text-zinc-700 mb-1">Android Installation Guide</p>
+                  <p>After downloading the APK file, open it from your Downloads folder and enable "Install unknown apps" for your browser if prompted.</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDownloadsView() {
+      if (!state.user) {
+        return `
+          <div class="max-w-3xl mx-auto px-4 py-16 text-center">
+            <div class="bg-white border border-zinc-200 rounded-xl p-10">
+              <h1 class="text-2xl font-bold text-zinc-950">Sign in to view your downloads</h1>
+              <p class="text-sm text-zinc-600 mt-2 max-w-md mx-auto leading-relaxed">
+                Create an account or sign in with your email and password to keep a personal history of your downloaded Android APKs.
+              </p>
+              <button type="button" data-open-auth="signin" class="mt-6 px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg">Sign In</button>
+            </div>
+          </div>
+        `;
+      }
+
+      const publicApps = getPublicApps();
+      return `
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-zinc-200">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-bold text-zinc-950">My Downloads</h1>
+              <p class="text-sm text-zinc-600 mt-1">Private APK download log synced to your account.</p>
+            </div>
+            <span class="text-xs font-mono text-zinc-500">${state.downloadRecords.length} record(s)</span>
+          </div>
+
+          ${state.downloadRecords.length === 0 ? `
+            <div class="mt-8 bg-white border border-zinc-200 rounded-xl p-10 text-center">
+              <h2 class="text-base font-semibold text-zinc-950">No downloads recorded yet</h2>
+              <p class="text-sm text-zinc-600 mt-1">Download any app from the catalog and it will appear here.</p>
+              <button data-nav="catalog" type="button" class="mt-5 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg">Browse Catalog</button>
+            </div>
+          ` : `
+            <div class="mt-6 bg-white border border-zinc-200 rounded-xl overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b border-zinc-200 text-xs font-medium text-zinc-500 bg-zinc-50/70">
+                      <th class="py-3 px-4">Application</th>
+                      <th class="py-3 px-4">Version</th>
+                      <th class="py-3 px-4">Downloaded</th>
+                      <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-zinc-100 text-sm">
+                    ${state.downloadRecords.map((rec) => {
+                      const matched = publicApps.find((a) => a.id === rec.appId);
+                      const dt = rec.downloadedAt?.toDate ? rec.downloadedAt.toDate().toLocaleString() : 'Just now';
+                      return `
+                        <tr class="hover:bg-zinc-50/70">
+                          <td class="py-3.5 px-4 font-semibold text-zinc-950">${esc(rec.appName)}</td>
+                          <td class="py-3.5 px-4 font-mono text-xs text-zinc-600">v${esc(rec.version)}</td>
+                          <td class="py-3.5 px-4 text-xs text-zinc-500">${esc(dt)}</td>
+                          <td class="py-3.5 px-4 text-right space-x-3">
+                            ${matched ? `<button type="button" data-open-app="${esc(matched.id)}" class="text-xs font-semibold text-emerald-700 hover:underline">Open App</button>` : ''}
+                            <button type="button" data-delete-download="${esc(rec.id)}" class="text-xs font-medium text-zinc-500 hover:text-red-600">Remove</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function renderAdminView() {
+      if (!state.isAdminUnlocked) return renderCatalogView();
+      const canWrite = isAuthorizedAdminUser();
+      const f = state.form;
+      const videoPreview = getVideoEmbedInfo(f.videoUrl);
+
+      return `
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+          <div class="pb-6 border-b border-zinc-200">
+            <h1 class="text-2xl sm:text-3xl font-bold text-zinc-950">Admin Panel</h1>
+            <p class="text-sm text-zinc-600 mt-1">Add an app in seconds by pasting your Google Drive APK link and optional Google Drive video link.</p>
+          </div>
+
+          ${!canWrite ? `
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-2 text-xs text-amber-950">
+              <p class="font-semibold text-sm">Enable Email/Password in Firebase Console to save apps</p>
+              <p>No email verification is needed. Enable <strong>Authentication &rarr; Sign-in method &rarr; Email/Password</strong> once in Firebase Console, then sign out and sign back in with <code class="font-mono">${esc(PRIMARY_ADMIN_EMAIL)}</code>.</p>
+              <a href="https://console.firebase.google.com/project/${FIREBASE_CONFIG.projectId}/authentication/providers" target="_blank" rel="noopener noreferrer" class="inline-block mt-1 px-3.5 py-2 font-semibold text-zinc-900 bg-white border border-zinc-300 rounded-lg hover:bg-zinc-50">
+                Open Firebase Auth Console &nearr;
+              </a>
+            </div>
+          ` : ''}
+
+          ${state.adminFeedback ? `
+            <div class="px-4 py-3 rounded-lg border text-sm flex items-center justify-between gap-4 ${
+              state.adminFeedback.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-800'
+            }">
+              <span>${esc(state.adminFeedback.text)}</span>
+              <button id="dismiss-feedback-btn" type="button" class="text-xs font-semibold underline shrink-0">Dismiss</button>
+            </div>
+          ` : ''}
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <!-- Ultra-Simple 3-Field Google Drive Form -->
+            <form id="release-form" class="lg:col-span-7 bg-white border border-zinc-200 rounded-xl p-6 space-y-5">
+              <div class="flex items-center justify-between pb-4 border-b border-zinc-100">
+                <div>
+                  <h2 class="text-base font-bold text-zinc-950">${state.editingId ? `Edit App: ${esc(state.editingId)}` : 'Upload App (Google Drive)'}</h2>
+                  <p class="text-xs text-zinc-500 mt-0.5">Set Google Drive sharing to "Anyone with the link" and paste your links below.</p>
+                </div>
+                ${state.editingId ? `<button id="cancel-edit-btn" type="button" class="text-xs font-medium text-zinc-600 hover:text-zinc-950">Cancel Edit</button>` : ''}
+              </div>
+
+              <!-- 1. APK / App Name -->
+              <div>
+                <label class="block text-xs font-semibold text-zinc-800 mb-1.5">APK / App Name *</label>
+                <input name="name" required maxlength="120" value="${esc(f.name)}" placeholder="e.g. NoteSync Pro" class="w-full px-3.5 py-2.5 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:border-emerald-600" />
+              </div>
+
+              <!-- 2. Google Drive APK Link -->
+              <div>
+                <label class="block text-xs font-semibold text-zinc-800 mb-1.5">APK Link (Google Drive) *</label>
+                <input name="apkUrl" required type="url" value="${esc(f.apkUrl)}" placeholder="https://drive.google.com/file/d/.../view?usp=sharing" class="w-full px-3.5 py-2.5 text-sm font-mono border border-zinc-200 rounded-lg focus:outline-none focus:border-emerald-600" />
+                <p class="text-[11px] text-zinc-500 mt-1">Google Drive share links convert to direct APK download links automatically.</p>
+              </div>
+
+              <!-- 3. Optional Google Drive Video Link -->
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-semibold text-zinc-800 mb-1.5">App Video Link (Optional — Google Drive, YouTube, or MP4)</label>
+                  <input id="admin-video-input" name="videoUrl" type="url" value="${esc(f.videoUrl)}" placeholder="https://drive.google.com/file/d/.../view?usp=sharing" class="w-full px-3.5 py-2.5 text-sm font-mono border border-zinc-200 rounded-lg focus:outline-none focus:border-emerald-600" />
+                  <p class="text-[11px] text-zinc-500 mt-1">Optional. Leave blank if this app does not have a demo video.</p>
+                </div>
+
+                ${videoPreview.type !== 'none' ? `
+                  <div class="aspect-video w-full rounded-lg overflow-hidden bg-zinc-950 border border-zinc-200">
+                    ${videoPreview.type === 'direct'
+                      ? `<video src="${esc(videoPreview.src)}" controls class="w-full h-full object-contain"></video>`
+                      : `<iframe src="${esc(videoPreview.src)}" title="Video preview" class="w-full h-full border-0" allowfullscreen></iframe>`}
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Collapsible Optional Details -->
+              <div class="pt-2 border-t border-zinc-100">
+                <button id="toggle-optional-btn" type="button" class="w-full flex items-center justify-between py-2 text-xs font-semibold text-zinc-600 hover:text-zinc-950">
+                  <span>Optional Details (Icon, Description, Category, Version)</span>
+                  <span>${state.showOptional ? '▲' : '▼'}</span>
+                </button>
+                <div class="${state.showOptional ? 'pt-3 space-y-4' : 'hidden'}">
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium text-zinc-600 mb-1">Version</label>
+                      <input name="version" maxlength="40" value="${esc(f.version)}" placeholder="1.0.0" class="w-full px-3 py-2 text-xs font-mono border border-zinc-200 rounded-lg" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-zinc-600 mb-1">Category</label>
+                      <select name="category" class="w-full px-3 py-2 text-xs border border-zinc-200 rounded-lg bg-white">
+                        ${CATEGORIES.filter((c) => c !== 'All').map((c) => `<option value="${esc(c)}" ${f.category === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-zinc-600 mb-1">Size (MB)</label>
+                      <input name="apkSizeMb" type="number" step="0.1" min="0" max="2048" value="${f.apkSizeBytes ? (f.apkSizeBytes / (1024 * 1024)).toFixed(2) : ''}" placeholder="24.5" class="w-full px-3 py-2 text-xs font-mono border border-zinc-200 rounded-lg" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-zinc-600 mb-1">App Icon Link (Google Drive or HTTPS Image)</label>
+                    <input name="iconUrl" value="${esc(f.iconUrl)}" placeholder="https://drive.google.com/file/d/.../view?usp=sharing" class="w-full px-3 py-2 text-xs font-mono border border-zinc-200 rounded-lg" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-zinc-600 mb-1">Short Tagline</label>
+                    <input name="tagline" maxlength="240" value="${esc(f.tagline)}" placeholder="Optional short summary" class="w-full px-3 py-2 text-xs border border-zinc-200 rounded-lg" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-zinc-600 mb-1">Description</label>
+                    <textarea name="description" rows="3" maxlength="5000" placeholder="Optional app details..." class="w-full px-3 py-2 text-xs border border-zinc-200 rounded-lg">${esc(f.description)}</textarea>
+                  </div>
+                  <div class="flex items-center gap-5 text-xs font-medium text-zinc-700">
+                    <label class="inline-flex items-center gap-2 cursor-pointer"><input name="published" type="checkbox" ${f.published ? 'checked' : ''} /> Published publicly</label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer"><input name="featured" type="checkbox" ${f.featured ? 'checked' : ''} /> Feature on homepage</label>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="w-full py-3 px-5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors">
+                ${state.editingId ? 'Save Changes' : 'Publish App'}
+              </button>
+            </form>
+
+            <!-- Live Published Apps -->
+            <section class="lg:col-span-5 bg-white border border-zinc-200 rounded-xl overflow-hidden">
+              <div class="px-5 py-4 border-b border-zinc-200 flex items-center justify-between">
+                <h2 class="text-sm font-bold text-zinc-950">Published Apps (${state.firestoreApps.length})</h2>
+                <span class="text-xs text-zinc-500">Live synced</span>
+              </div>
+              ${state.firestoreApps.length === 0 ? `
+                <div class="p-8 text-center text-xs text-zinc-500">
+                  No apps published yet. Enter an APK name and Google Drive link on the left to publish immediately.
+                </div>
+              ` : `
+                <div class="divide-y divide-zinc-100">
+                  ${state.firestoreApps.map((app) => `
+                    <div class="p-4 flex items-start gap-3">
+                      ${renderAppAvatar(app, 'w-11 h-11 rounded-xl')}
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                          <p class="text-sm font-semibold text-zinc-950 truncate">${esc(app.name)}</p>
+                          <span class="text-[11px] font-semibold ${app.published ? 'text-emerald-700' : 'text-amber-700'}">${app.published ? 'Published' : 'Draft'}</span>
+                        </div>
+                        <p class="text-xs font-mono text-zinc-500 mt-0.5 truncate">v${esc(app.version)} &middot; ${formatBytes(app.apkSizeBytes)}${app.videoUrl ? ' &middot; Video' : ''}</p>
+                        <div class="mt-2.5 flex flex-wrap items-center gap-3 text-xs">
+                          <button type="button" data-edit-app="${esc(app.id)}" class="font-medium text-zinc-700 hover:text-zinc-950">Edit</button>
+                          <button type="button" data-toggle-pub="${esc(app.id)}" class="font-medium text-zinc-700 hover:text-zinc-950">${app.published ? 'Unpublish' : 'Publish'}</button>
+                          <button type="button" data-feature-app="${esc(app.id)}" class="font-medium ${app.featured ? 'text-emerald-700' : 'text-zinc-600'}">${app.featured ? 'Featured' : 'Feature'}</button>
+                          ${state.confirmDeleteId === app.id ? `
+                            <button type="button" data-confirm-del="${esc(app.id)}" class="font-semibold text-red-600 ml-auto">Confirm Delete</button>
+                            <button type="button" data-cancel-del="1" class="text-zinc-500">Cancel</button>
+                          ` : `
+                            <button type="button" data-ask-del="${esc(app.id)}" class="text-zinc-400 hover:text-red-600 ml-auto">Delete</button>
+                          `}
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </section>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // Render & Event Binding
+    // =========================================================================
+    function render() {
+      updateHeader();
+      const root = document.getElementById('app-root');
+      if (state.page === 'detail') root.innerHTML = renderDetailView();
+      else if (state.page === 'downloads') root.innerHTML = renderDownloadsView();
+      else if (state.page === 'admin' && state.isAdminUnlocked) root.innerHTML = renderAdminView();
+      else root.innerHTML = renderCatalogView();
+      bindDynamicEvents();
+    }
+
+    function readFormIntoState() {
+      const formEl = document.getElementById('release-form');
+      if (!formEl) return;
+      const fd = new FormData(formEl);
+      const mb = parseFloat(String(fd.get('apkSizeMb') || '0')) || 0;
+      state.form = {
+        ...state.form,
+        name: String(fd.get('name') || ''),
+        apkUrl: String(fd.get('apkUrl') || ''),
+        videoUrl: String(fd.get('videoUrl') || ''),
+        iconUrl: String(fd.get('iconUrl') || ''),
+        tagline: String(fd.get('tagline') || ''),
+        description: String(fd.get('description') || ''),
+        version: String(fd.get('version') || '1.0.0'),
+        category: String(fd.get('category') || 'Utilities'),
+        apkSizeBytes: Math.round(mb * 1024 * 1024),
+        published: formEl.querySelector('input[name="published"]')?.checked ?? true,
+        featured: formEl.querySelector('input[name="featured"]')?.checked ?? false,
+      };
+    }
+
+    function bindDynamicEvents() {
+      const root = document.getElementById('app-root');
+
+      root.querySelectorAll('[data-nav]').forEach((el) => {
+        el.addEventListener('click', () => navigate(el.getAttribute('data-nav')));
+      });
+      root.querySelectorAll('[data-open-auth]').forEach((el) => {
+        el.addEventListener('click', () => openAuthModal(el.getAttribute('data-open-auth')));
+      });
+      root.querySelectorAll('[data-open-app]').forEach((el) => {
+        el.addEventListener('click', () => navigate('detail', el.getAttribute('data-open-app')));
+      });
+      root.querySelectorAll('[data-download-app]').forEach((el) => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = el.getAttribute('data-download-app');
+          const app = [...state.firestoreApps, ...getPublicApps()].find((a) => a.id === id);
+          if (app) void handleDownloadApk(app);
+        });
+      });
+      root.querySelectorAll('[data-cat]').forEach((el) => {
+        el.addEventListener('click', () => {
+          state.selectedCategory = el.getAttribute('data-cat');
+          render();
+        });
+      });
+
+      const searchInput = document.getElementById('catalog-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          state.searchQuery = e.target.value;
+          const pos = e.target.selectionStart;
+          render();
+          const refreshed = document.getElementById('catalog-search');
+          if (refreshed) { refreshed.focus(); refreshed.setSelectionRange(pos, pos); }
+        });
+      }
+
+      document.getElementById('reset-filters-btn')?.addEventListener('click', () => {
+        state.searchQuery = '';
+        state.selectedCategory = 'All';
+        render();
+      });
+
+      root.querySelectorAll('[data-delete-download]').forEach((el) => {
+        el.addEventListener('click', async () => {
+          if (!state.user) return;
+          try { await deleteDoc(doc(db, 'users', state.user.uid, 'downloads', el.getAttribute('data-delete-download'))); }
+          catch { showToast('Could not remove record.'); }
+        });
+      });
+
+      // Admin bindings
+      document.getElementById('dismiss-feedback-btn')?.addEventListener('click', () => {
+        state.adminFeedback = null;
+        render();
+      });
+      document.getElementById('toggle-optional-btn')?.addEventListener('click', () => {
+        readFormIntoState();
+        state.showOptional = !state.showOptional;
+        render();
+      });
+      document.getElementById('admin-video-input')?.addEventListener('change', () => {
+        readFormIntoState();
+        render();
+      });
+      document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
+        state.editingId = null;
+        state.form = createEmptyForm();
+        render();
+      });
+
+      document.getElementById('release-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        readFormIntoState();
+        if (!isAuthorizedAdminUser() || !state.user) {
+          state.adminFeedback = {
+            type: 'error',
+            text: `Enable Authentication → Sign-in method → Email/Password in Firebase Console, then sign in again with ${PRIMARY_ADMIN_EMAIL}.`,
+          };
+          render();
+          return;
+        }
+
+        const f = state.form;
+        const cleanName = f.name.trim().slice(0, 120);
+        const normApk = normalizeDriveUrl(f.apkUrl, 'apk');
+        const normVideo = normalizeDriveUrl(f.videoUrl, 'video');
+        const normIcon = normalizeDriveUrl(f.iconUrl, 'image');
+
+        if (!cleanName) {
+          state.adminFeedback = { type: 'error', text: 'APK / App Name is required.' };
+          render();
+          return;
+        }
+        if (!safeHttps(normApk.url)) {
+          state.adminFeedback = { type: 'error', text: 'Please enter a valid Google Drive or HTTPS APK link.' };
+          render();
+          return;
+        }
+
+        const docId = state.editingId || slugifyAppId(cleanName);
+        const defaultApkName = `${cleanName.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || docId}.apk`;
+        const defaultPkg = `com.droidvault.${docId.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'app'}`;
+
+        const payload = {
+          id: docId,
+          name: cleanName,
+          tagline: (f.tagline.trim() || `Direct Android APK download for ${cleanName}.`).slice(0, 240),
+          description: f.description.trim().slice(0, 5000),
+          whatsNew: '',
+          version: (f.version.trim() || '1.0.0').slice(0, 40),
+          packageId: defaultPkg.slice(0, 160),
+          category: (f.category.trim() || 'Utilities').slice(0, 80),
+          minAndroid: 'Android 8.0+',
+          developer: 'DroidVault',
+          iconUrl: safeHttps(normIcon.url).slice(0, 2048),
+          apkUrl: safeHttps(normApk.url).slice(0, 2048),
+          apkFileName: defaultApkName.slice(0, 200),
+          apkSizeBytes: Math.max(0, Math.min(2147483648, Math.round(Number(f.apkSizeBytes) || 0))),
+          apkSha256: '',
+          screenshots: [],
+          videoUrl: safeHttps(normVideo.url).slice(0, 2048),
+          videoFileName: '',
+          featured: Boolean(f.featured),
+          published: Boolean(f.published),
+          storageProvider: normApk.isDrive ? 'google-drive' : 'cloud-link',
+        };
+
+        try {
+          if (state.editingId) {
+            await updateDoc(doc(db, 'apps', docId), {
+              ...payload,
+              updatedAt: serverTimestamp(),
+            });
+            state.adminFeedback = { type: 'success', text: `Updated "${payload.name}".` };
+          } else {
+            await setDoc(doc(db, 'apps', docId), {
+              ...payload,
+              downloads: 0,
+              ownerUid: state.user.uid,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+            state.adminFeedback = { type: 'success', text: `Published "${payload.name}" to the storefront.` };
+          }
+          state.editingId = null;
+          state.form = createEmptyForm();
+          state.showOptional = false;
+        } catch (err) {
+          state.adminFeedback = { type: 'error', text: err.message || 'Failed to save app.' };
+        }
+        render();
+      });
+
+      root.querySelectorAll('[data-edit-app]').forEach((el) => {
+        el.addEventListener('click', () => {
+          const app = state.firestoreApps.find((a) => a.id === el.getAttribute('data-edit-app'));
+          if (!app) return;
+          state.editingId = app.id;
+          state.form = {
+            name: app.name,
+            apkUrl: app.apkUrl,
+            videoUrl: app.videoUrl,
+            iconUrl: app.iconUrl,
+            tagline: app.tagline,
+            description: app.description,
+            version: app.version,
+            category: app.category,
+            apkSizeBytes: app.apkSizeBytes,
+            published: app.published,
+            featured: app.featured,
+          };
+          state.adminFeedback = null;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          render();
+        });
+      });
+
+      root.querySelectorAll('[data-toggle-pub]').forEach((el) => {
+        el.addEventListener('click', async () => {
+          const app = state.firestoreApps.find((a) => a.id === el.getAttribute('data-toggle-pub'));
+          if (!app || !isAuthorizedAdminUser()) return;
+          await updateDoc(doc(db, 'apps', app.id), { published: !app.published, updatedAt: serverTimestamp() });
+        });
+      });
+
+      root.querySelectorAll('[data-feature-app]').forEach((el) => {
+        el.addEventListener('click', async () => {
+          const id = el.getAttribute('data-feature-app');
+          if (!isAuthorizedAdminUser()) return;
+          const batch = writeBatch(db);
+          state.firestoreApps.forEach((a) => {
+            if (a.id === id || a.featured) {
+              batch.update(doc(db, 'apps', a.id), { featured: a.id === id, updatedAt: serverTimestamp() });
+            }
+          });
+          await batch.commit();
+        });
+      });
+
+      root.querySelectorAll('[data-ask-del]').forEach((el) => {
+        el.addEventListener('click', () => { state.confirmDeleteId = el.getAttribute('data-ask-del'); render(); });
+      });
+      root.querySelectorAll('[data-cancel-del]').forEach((el) => {
+        el.addEventListener('click', () => { state.confirmDeleteId = null; render(); });
+      });
+      root.querySelectorAll('[data-confirm-del]').forEach((el) => {
+        el.addEventListener('click', async () => {
+          const id = el.getAttribute('data-confirm-del');
+          if (!isAuthorizedAdminUser()) return;
+          await deleteDoc(doc(db, 'apps', id));
+          state.confirmDeleteId = null;
+          if (state.editingId === id) { state.editingId = null; state.form = createEmptyForm(); }
+          state.adminFeedback = { type: 'success', text: 'App deleted.' };
+          render();
+        });
+      });
+    }
+
+    // =========================================================================
+    // Boot
+    // =========================================================================
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+    document.getElementById('brand-btn').addEventListener('click', () => navigate('catalog'));
+    document.getElementById('admin-nav-btn').addEventListener('click', () => navigate('admin'));
+    document.getElementById('signin-open-btn').addEventListener('click', () => openAuthModal('signin'));
+    document.getElementById('auth-close-btn').addEventListener('click', closeAuthModal);
+    document.getElementById('auth-modal').addEventListener('click', (e) => { if (e.target.id === 'auth-modal') closeAuthModal(); });
+    document.getElementById('mode-signin-btn').addEventListener('click', () => { state.authMode = 'signin'; syncAuthModalMode(); });
+    document.getElementById('mode-signup-btn').addEventListener('click', () => { state.authMode = 'signup'; syncAuthModalMode(); });
+    document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
+    document.getElementById('account-menu-btn').addEventListener('click', () => document.getElementById('account-dropdown').classList.toggle('hidden'));
+    document.getElementById('signout-btn').addEventListener('click', async () => {
+      persistAdminUnlock(false);
+      document.getElementById('account-dropdown').classList.add('hidden');
+      try { await signOut(auth); } catch {}
+      if (state.page === 'admin') navigate('catalog'); else render();
+    });
+    document.getElementById('mobile-menu-btn').addEventListener('click', () => document.getElementById('mobile-drawer').classList.toggle('hidden'));
+    document.querySelectorAll('header [data-nav], footer [data-nav]').forEach((btn) => {
+      btn.addEventListener('click', () => navigate(btn.getAttribute('data-nav')));
+    });
+
+    window.addEventListener('hashchange', () => {
+      const parsed = parseHash();
+      state.page = parsed.page;
+      state.selectedAppId = parsed.appId;
+      render();
+    });
+
+    const initial = parseHash();
+    state.page = initial.page;
+    state.selectedAppId = initial.appId;
+    render();
+
+    onAuthStateChanged(auth, async (firebaseUser) => {
+      state.user = firebaseUser;
+      if (firebaseUser) await syncUserProfileDoc(firebaseUser);
+      subscribeApps();
+      subscribeDownloads();
+      render();
+    });
+  </script>
+</body>
+</html>
